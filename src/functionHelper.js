@@ -19,7 +19,8 @@ function runPythonHandler(funOptions, options){
       process.on('close', (code) => {
           if (code == 0) {
               try {
-                context.succeed( JSON.parse(results) );
+                const resultsData = results.match(/^{(.|\n)*?}$/gm).pop();
+                context.succeed( JSON.parse(resultsData) );
               } catch (ex) {
                 context.fail(results);
               }
