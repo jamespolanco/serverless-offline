@@ -4,13 +4,17 @@ const debugLog = require('./debugLog');
 
 function runPythonHandler(funOptions, options) {
   const spawn = require('child_process').spawn;
-  
+
   return function (event, context) {
-    const process = spawn('sls', ['invoke', 'local', '-f', funOptions.funName], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      shell: true,
-      cwd: funOptions.servicePath,
-    });
+    const process = spawn(
+      'sls',
+      ['invoke', 'local', '-f', funOptions.funName],
+      {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        shell: true,
+        cwd: funOptions.servicePath,
+      }
+    );
     process.stdin.write(`${JSON.stringify(event)}\n`);
     process.stdin.end();
     let results = '';
@@ -22,13 +26,14 @@ function runPythonHandler(funOptions, options) {
     });
     process.on('close', code => {
       if (code == 0) {
+        const resultMatch = results.match(/^{(.|\n)*?}$/gm);
+        const resultJson = resultMatch.pop();
         try {
-          const resultMatch = results.match(/^{(.|\n)*?}$/gm);
-          const resultJson = resultMatch.pop();
-          console.log(resultMatch.join(''));
+          console.log(resultMatch.join('\n'));
           context.succeed(JSON.parse(resultJson));
         }
         catch (ex) {
+          console.log('Failed to parse:', resultJson);
           context.fail(results);
         }
       }
@@ -75,9 +80,7 @@ module.exports = {
     }
     const user_python = true;
     let handler = null;
-    if (
-      ['python2.7', 'python3.6'].indexOf(funOptions.serviceRuntime) !== -1
-    ) {
+    if (['python2.7', 'python3.6'].indexOf(funOptions.serviceRuntime) !== -1) {
       handler = runPythonHandler(funOptions, options);
     }
     else {
